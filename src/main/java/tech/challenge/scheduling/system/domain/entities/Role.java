@@ -5,6 +5,7 @@ import java.util.Objects;
 public class Role {
 
     public enum RoleName {
+        ADMIN,
         PATIENT,
         NURSE,
         DOCTOR

@@ -3,7 +3,7 @@ package tech.challenge.scheduling.system.presentation.controllers;
 import tech.challenge.scheduling.system.presentation.dtos.auth.LoginResponseDTO;
 import tech.challenge.scheduling.system.presentation.dtos.user.ChangePasswordDTO;
 import tech.challenge.scheduling.system.presentation.dtos.user.LoginUserDTO;
-import tech.challenge.scheduling.system.infrastructure.persistence.entities.UserJpaEntity;
+import tech.challenge.scheduling.system.infrastructure.security.MultiProfileUserDetails;
 import tech.challenge.scheduling.system.application.services.AuthApplicationService;
 import tech.challenge.scheduling.system.infrastructure.security.TokenService;
 import tech.challenge.scheduling.system.domain.valueobjects.UserId;
@@ -37,13 +37,14 @@ public class AuthController {
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginUserDTO dto) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(dto.login(), dto.password());
         var authentication = authenticationManager.authenticate(authenticationToken);
-        String accessToken = tokenService.generateToken((UserJpaEntity) authentication.getPrincipal());
+        MultiProfileUserDetails userDetails = (MultiProfileUserDetails) authentication.getPrincipal();
+        String accessToken = tokenService.generateToken(userDetails.getUsername(), userDetails.getRole());
         return ResponseEntity.ok(LoginResponseDTO.of(accessToken));
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordDTO dto,
-            @AuthenticationPrincipal UserJpaEntity authenticatedUser) {
+            @AuthenticationPrincipal MultiProfileUserDetails authenticatedUser) {
         authApplicationService.changePassword(UserId.of(authenticatedUser.getId()), dto.newPassword());
         return ResponseEntity.noContent().build();
     }

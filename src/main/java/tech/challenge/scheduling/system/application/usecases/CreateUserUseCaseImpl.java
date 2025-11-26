@@ -4,9 +4,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import tech.challenge.scheduling.system.domain.entities.Role;
 import tech.challenge.scheduling.system.domain.entities.User;
+import java.util.Comparator;
 import tech.challenge.scheduling.system.domain.exceptions.UserAlreadyExistsException;
 import tech.challenge.scheduling.system.domain.repositories.RoleRepository;
 import tech.challenge.scheduling.system.domain.repositories.UserRepository;
+import tech.challenge.scheduling.system.infrastructure.persistence.repositories.UserJpaRepository;
 import tech.challenge.scheduling.system.domain.usecases.user.CreateUserUseCase;
 import tech.challenge.scheduling.system.domain.valueobjects.Email;
 import tech.challenge.scheduling.system.domain.valueobjects.Login;
@@ -16,11 +18,15 @@ public class CreateUserUseCaseImpl extends CreateUserUseCase {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final UserJpaRepository userJpaRepository;
+
     public CreateUserUseCaseImpl(UserRepository userRepository,
             RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            UserJpaRepository userJpaRepository) {
         super(userRepository, roleRepository);
         this.passwordEncoder = passwordEncoder;
+        this.userJpaRepository = userJpaRepository;
     }
 
     public User execute(String name, String email, String login, String password,
@@ -34,7 +40,12 @@ public class CreateUserUseCaseImpl extends CreateUserUseCase {
 
         String encodedPassword = passwordEncoder.encode(password);
 
-        User user = User.create(name, email, login, encodedPassword);
+        Long nextId = userJpaRepository.findAll().stream()
+            .map(u -> u.getId() != null ? u.getId() : 0L)
+            .max(Comparator.naturalOrder())
+            .orElse(0L) + 1;
+
+        User user = User.createWithId(nextId, name, email, login, encodedPassword);
 
         Role role = super.roleRepository.findByName(roleName)
                 .orElseThrow(

@@ -18,6 +18,19 @@ public class User {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
+    public static User createWithId(Long id, String name, String email, String login, String password) {
+        return new User(
+            UserId.of(id),
+            Name.of(name),
+            Email.of(email),
+            Login.of(login),
+            Password.of(password),
+            new HashSet<>(),
+            LocalDateTime.now(),
+            LocalDateTime.now()
+        );
+    }
+
     public User(UserId id, Name name, Email email, Login login, Password password, Set<Role> roles,
             LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
