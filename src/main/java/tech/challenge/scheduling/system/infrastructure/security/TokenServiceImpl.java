@@ -6,7 +6,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import tech.challenge.scheduling.system.infrastructure.persistence.entities.UserJpaEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -19,12 +18,13 @@ public class TokenServiceImpl implements TokenService {
     private static final String SECRET = "12345678";
 
     @Override
-    public String generateToken(UserJpaEntity user) {
+    public String generateToken(String login, String role) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(SECRET);
             return JWT.create()
                     .withIssuer("auth0")
-                    .withSubject(user.getUsername())
+                    .withSubject(login)
+                    .withClaim("role", role)
                     .withExpiresAt(expiration(30))
                     .sign(algorithm);
         } catch (JWTCreationException exception) {

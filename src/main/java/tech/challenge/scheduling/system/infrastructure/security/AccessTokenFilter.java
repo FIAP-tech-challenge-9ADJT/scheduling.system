@@ -1,7 +1,9 @@
 package tech.challenge.scheduling.system.infrastructure.security;
 
-import tech.challenge.scheduling.system.infrastructure.persistence.entities.UserJpaEntity;
-import tech.challenge.scheduling.system.infrastructure.persistence.repositories.UserJpaRepository;
+import tech.challenge.scheduling.system.infrastructure.persistence.repositories.AdminJpaRepository;
+import tech.challenge.scheduling.system.infrastructure.persistence.repositories.DoctorJpaRepository;
+import tech.challenge.scheduling.system.infrastructure.persistence.repositories.NurseJpaRepository;
+import tech.challenge.scheduling.system.infrastructure.persistence.repositories.PatientJpaRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +21,10 @@ import java.util.List;
 public class AccessTokenFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
-    private final UserJpaRepository userRepository;
+    private final AdminJpaRepository adminRepo;
+    private final DoctorJpaRepository doctorRepo;
+    private final NurseJpaRepository nurseRepo;
+    private final PatientJpaRepository patientRepo;
 
     private static final List<String> PUBLIC_URLS = List.of(
             "/v3/api-docs",
@@ -32,9 +37,12 @@ public class AccessTokenFilter extends OncePerRequestFilter {
             "/swagger-resources/",
             "/webjars/");
 
-    public AccessTokenFilter(TokenService tokenService, UserJpaRepository userRepository) {
+    public AccessTokenFilter(TokenService tokenService, AdminJpaRepository adminRepo, DoctorJpaRepository doctorRepo, NurseJpaRepository nurseRepo, PatientJpaRepository patientRepo) {
         this.tokenService = tokenService;
-        this.userRepository = userRepository;
+        this.adminRepo = adminRepo;
+        this.doctorRepo = doctorRepo;
+        this.nurseRepo = nurseRepo;
+        this.patientRepo = patientRepo;
     }
 
     @Override
@@ -54,11 +62,28 @@ public class AccessTokenFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 String login = tokenService.verifyToken(token);
-                UserJpaEntity user = userRepository.findByLogin(login)
-                        .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(user, null,
-                        user.getAuthorities());
+                MultiProfileUserDetails userDetails = null;
+                var admin = adminRepo.findByLogin(login);
+                if (admin != null) {
+                    userDetails = new MultiProfileUserDetails(admin.getId(), admin.getLogin(), admin.getPassword(), admin.getRole());
+                }
+                var doctor = doctorRepo.findByLogin(login);
+                if (doctor != null) {
+                    userDetails = new MultiProfileUserDetails(doctor.getId(), doctor.getLogin(), doctor.getPassword(), doctor.getRole());
+                }
+                var nurse = nurseRepo.findByLogin(login);
+                if (nurse != null) {
+                    userDetails = new MultiProfileUserDetails(nurse.getId(), nurse.getLogin(), nurse.getPassword(), nurse.getRole());
+                }
+                var patient = patientRepo.findByLogin(login);
+                if (patient != null) {
+                    userDetails = new MultiProfileUserDetails(patient.getId(), patient.getLogin(), patient.getPassword(), patient.getRole());
+                }
+                if (userDetails == null) {
+                    throw new RuntimeException("Usuário não encontrado");
+                }
+                Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
             } catch (Exception e) {

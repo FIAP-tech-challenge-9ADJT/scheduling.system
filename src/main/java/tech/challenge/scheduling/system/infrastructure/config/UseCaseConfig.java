@@ -18,8 +18,9 @@ public class UseCaseConfig {
     public CreateUserUseCaseImpl createUserUseCase(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
-        return new CreateUserUseCaseImpl(userRepository, roleRepository, passwordEncoder);
+            PasswordEncoder passwordEncoder,
+            tech.challenge.scheduling.system.infrastructure.persistence.repositories.UserJpaRepository userJpaRepository) {
+        return new CreateUserUseCaseImpl(userRepository, roleRepository, passwordEncoder, userJpaRepository);
     }
 
     @Bean
