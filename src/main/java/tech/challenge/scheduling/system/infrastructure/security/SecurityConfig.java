@@ -57,6 +57,14 @@ public class SecurityConfig {
                             req.requestMatchers(HttpMethod.PUT, "/nurses/{id}").hasAnyRole("ADMIN", "NURSE");
                             req.requestMatchers(HttpMethod.DELETE, "/nurses/{id}").hasRole("ADMIN");
 
+                            // CONSULTAS
+                            req.requestMatchers(HttpMethod.GET, "/consultations").hasAnyRole("PATIENT");
+                            req.requestMatchers(HttpMethod.GET, "/consultations/**").hasAnyRole("ADMIN", "DOCTOR", "NURSE", "PATIENT");
+                            req.requestMatchers(HttpMethod.GET, "/consultations/patient/**").hasAnyRole("ADMIN", "DOCTOR", "NURSE");
+                            req.requestMatchers(HttpMethod.POST, "/consultations").hasAnyRole("ADMIN", "NURSE");
+                            req.requestMatchers(HttpMethod.PUT, "/consultations/**").hasAnyRole("ADMIN", "DOCTOR");
+                            req.requestMatchers(HttpMethod.DELETE, "/consultations/**").hasAnyRole("ADMIN", "DOCTOR", "NURSE");
+
                             req.anyRequest().authenticated();
                         })
                         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
