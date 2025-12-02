@@ -1,0 +1,136 @@
+# Schema GraphQL para Sistema de Agendamento Hospitalar
+
+type Query {
+    # Consultas de histórico médico (requisito principal da especificação)
+    consultationsByPatient(patientId: ID!): [Consultation!]!
+    consultationsByDoctor(doctorId: ID!): [Consultation!]!
+    consultationsByDateRange(startDate: String!, endDate: String!): [Consultation!]!
+    futureConsultations(patientId: ID): [Consultation!]!
+    
+    # Consulta flexível com filtros (principal funcionalidade GraphQL)
+    consultations(filter: ConsultationFilter): ConsultationConnection!
+    
+    # Consulta individual
+    consultation(id: ID!): Consultation
+    
+    # Slots disponíveis para agendamento
+    availableSlots(doctorId: ID!, date: String!): [TimeSlot!]!
+}
+
+type Mutation {
+    # Operações de agendamento (médicos e enfermeiros)
+    createConsultation(input: CreateConsultationInput!): Consultation!
+    updateConsultation(id: ID!, input: UpdateConsultationInput!): Consultation!
+    cancelConsultation(id: ID!, reason: String): Boolean!
+    rescheduleConsultation(id: ID!, newDateTime: String!): Consultation!
+}
+
+# Tipos principais
+type Consultation {
+    id: ID!
+    patientId: ID!
+    doctorId: ID!
+    nurseId: ID
+    dateTime: String!
+    description: String!
+    notes: String
+    status: ConsultationStatus!
+    
+    # Relacionamentos (lazy loading)
+    patient: Patient
+    doctor: Doctor  
+    nurse: Nurse
+}
+
+type Patient {
+    id: ID!
+    name: String!
+    email: String!
+    login: String!
+    cpf: String
+    address: String
+    city: String
+    state: String
+    postalCode: String
+    createdAt: String!
+}
+
+type Doctor {
+    id: ID!
+    name: String!
+    email: String!
+    login: String!
+    crm: String!
+    createdAt: String!
+}
+
+type Nurse {
+    id: ID!
+    name: String!
+    email: String!
+    login: String!
+    coren: String!
+    createdAt: String!
+}
+
+type TimeSlot {
+    dateTime: String!
+    available: Boolean!
+    duration: Int!
+}
+
+# Paginação e filtros
+type ConsultationConnection {
+    edges: [ConsultationEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type ConsultationEdge {
+    node: Consultation!
+    cursor: String!
+}
+
+type PageInfo {
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    startCursor: String
+    endCursor: String
+}
+
+# Inputs
+input ConsultationFilter {
+    patientId: ID
+    doctorId: ID
+    nurseId: ID
+    startDate: String
+    endDate: String
+    status: ConsultationStatus
+    first: Int = 10
+    after: String
+}
+
+input CreateConsultationInput {
+    patientId: ID!
+    doctorId: ID!
+    nurseId: ID
+    dateTime: String!
+    description: String!
+    notes: String
+}
+
+input UpdateConsultationInput {
+    dateTime: String
+    description: String
+    notes: String
+    status: ConsultationStatus
+}
+
+enum ConsultationStatus {
+    SCHEDULED
+    CONFIRMED
+    IN_PROGRESS
+    COMPLETED
+    CANCELLED
+    NO_SHOW
+}
