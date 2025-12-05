@@ -34,5 +34,9 @@ public class ConsultationHistory {
 
 	@Column(columnDefinition = "TEXT")
 	private String notes;
+
+	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	private ConsultationStatus status = ConsultationStatus.SCHEDULED;
 }
 

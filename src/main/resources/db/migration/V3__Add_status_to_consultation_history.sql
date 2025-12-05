@@ -1,0 +1,2 @@
+ALTER TABLE consultation_history 
+ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED';

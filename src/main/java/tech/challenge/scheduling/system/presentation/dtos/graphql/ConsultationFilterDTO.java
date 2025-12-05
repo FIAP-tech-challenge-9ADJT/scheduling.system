@@ -6,24 +6,9 @@ public record ConsultationFilterDTO(
     Long nurseId,
     String startDate,
     String endDate,
-    String status,
-    Integer first,
-    String after
+    String status
 ) {
     public ConsultationFilterDTO withPatientId(Long patientId) {
-        return new ConsultationFilterDTO(patientId, doctorId, nurseId, startDate, endDate, status, first, after);
-    }
-    
-    public ConsultationFilterDTO withDefaults() {
-        return new ConsultationFilterDTO(
-            patientId, 
-            doctorId, 
-            nurseId, 
-            startDate, 
-            endDate, 
-            status,
-            first != null ? first : 10,
-            after
-        );
+        return new ConsultationFilterDTO(patientId, doctorId, nurseId, startDate, endDate, status);
     }
 }

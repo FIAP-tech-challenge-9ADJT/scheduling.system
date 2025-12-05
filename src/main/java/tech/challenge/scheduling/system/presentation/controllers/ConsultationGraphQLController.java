@@ -74,20 +74,20 @@ public class ConsultationGraphQLController {
 
     @QueryMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE', 'PATIENT')")
-    public ConsultationConnectionDTO consultations(
+    public List<ConsultationHistory> consultations(
             @Argument ConsultationFilterDTO filter,
             @AuthenticationPrincipal MultiProfileUserDetails user) {
+
+        if (filter == null) {
+            filter = new ConsultationFilterDTO(null, null, null, null, null, null);
+        }
         
         // Aplicar filtro de segurança para pacientes
         if (user.getRole().equals("PATIENT")) {
             filter = filter.withPatientId(user.getId());
         }
         
-        if (filter == null) {
-            filter = new ConsultationFilterDTO(null, null, null, null, null, null, 10, null);
-        }
-        
-        return consultationService.findWithPagination(filter.withDefaults());
+        return consultationService.findWithFilter(filter);
     }
 
     @QueryMapping

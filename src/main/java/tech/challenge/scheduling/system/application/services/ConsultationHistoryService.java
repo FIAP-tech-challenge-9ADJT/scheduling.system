@@ -3,6 +3,7 @@ package tech.challenge.scheduling.system.application.services;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.challenge.scheduling.system.domain.entities.ConsultationHistory;
+import tech.challenge.scheduling.system.domain.entities.ConsultationStatus;
 import tech.challenge.scheduling.system.exceptions.ResourceNotFoundException;
 import tech.challenge.scheduling.system.infrastructure.persistence.repositories.ConsultationHistoryRepository;
 import tech.challenge.scheduling.system.presentation.dtos.graphql.*;
@@ -49,7 +50,6 @@ public class ConsultationHistoryService {
         repository.deleteById(id);
     }
 
-    // Novos métodos para GraphQL
     @Transactional(readOnly = true)
     public List<ConsultationHistory> findByDoctorId(Long doctorId) {
         return repository.findByDoctorId(doctorId);
@@ -66,37 +66,24 @@ public class ConsultationHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public ConsultationConnectionDTO findWithPagination(ConsultationFilterDTO filter) {
-        List<ConsultationHistory> consultations;
+    public List<ConsultationHistory> findWithFilter(ConsultationFilterDTO filter) {
+        LocalDateTime start = null;
+        LocalDateTime end = null;
         
-        if (filter.patientId() != null) {
-            consultations = repository.findByPatientId(filter.patientId());
-        } else if (filter.doctorId() != null) {
-            consultations = repository.findByDoctorId(filter.doctorId());
-        } else {
-            consultations = repository.findAll();
+        if (filter.startDate() != null) {
+            start = LocalDateTime.parse(filter.startDate());
+        }
+        if (filter.endDate() != null) {
+            end = LocalDateTime.parse(filter.endDate());
         }
         
-        if (filter.startDate() != null && filter.endDate() != null) {
-            LocalDateTime start = LocalDateTime.parse(filter.startDate());
-            LocalDateTime end = LocalDateTime.parse(filter.endDate());
-            consultations = consultations.stream()
-                .filter(c -> c.getDateTime().isAfter(start) && c.getDateTime().isBefore(end))
-                .toList();
-        }
-        int fromIndex = 0;
-        int toIndex = Math.min(filter.first(), consultations.size());
-        List<ConsultationHistory> paginatedResults = consultations.subList(fromIndex, toIndex);
-        
-        boolean hasNext = consultations.size() > filter.first();
-        boolean hasPrevious = false;
-        
-        return ConsultationConnectionDTO.from(
-            paginatedResults, 
-            hasNext, 
-            hasPrevious, 
-            paginatedResults.isEmpty() ? null : String.valueOf(paginatedResults.get(0).getId()),
-            paginatedResults.isEmpty() ? null : String.valueOf(paginatedResults.get(paginatedResults.size() - 1).getId())
+        return repository.findWithFilters(
+            filter.patientId(),
+            filter.doctorId(),
+            filter.nurseId(),
+            start,
+            end,
+            filter.status()
         );
     }
 
@@ -113,6 +100,10 @@ public class ConsultationHistoryService {
         }
         if (input.notes() != null) {
             consultation.setNotes(input.notes());
+        }
+
+        if (input.status() != null) {
+            consultation.setStatus(ConsultationStatus.valueOf(input.status()));
         }
         
         return repository.save(consultation);

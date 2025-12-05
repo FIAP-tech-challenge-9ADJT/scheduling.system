@@ -29,12 +29,14 @@ public interface ConsultationHistoryRepository extends JpaRepository<Consultatio
            "(:doctorId IS NULL OR c.doctorId = :doctorId) AND " +
            "(:nurseId IS NULL OR c.nurseId = :nurseId) AND " +
            "(:startDate IS NULL OR c.dateTime >= :startDate) AND " +
-           "(:endDate IS NULL OR c.dateTime <= :endDate)")
+           "(:endDate IS NULL OR c.dateTime <= :endDate) AND " +
+           "(:status IS NULL OR CAST(c.status AS string) = :status)")
     List<ConsultationHistory> findWithFilters(
         @Param("patientId") Long patientId,
         @Param("doctorId") Long doctorId,
         @Param("nurseId") Long nurseId,
         @Param("startDate") LocalDateTime startDate,
-        @Param("endDate") LocalDateTime endDate
+        @Param("endDate") LocalDateTime endDate,
+        @Param("status") String status
     );
 }

@@ -8,7 +8,7 @@ type Query {
     futureConsultations(patientId: ID): [Consultation!]!
     
     # Consulta flexível com filtros (principal funcionalidade GraphQL)
-    consultations(filter: ConsultationFilter): ConsultationConnection!
+    consultations(filter: ConsultationFilter): [Consultation!]!
     
     # Consulta individual
     consultation(id: ID!): Consultation
@@ -79,24 +79,8 @@ type TimeSlot {
     duration: Int!
 }
 
-# Paginação e filtros
-type ConsultationConnection {
-    edges: [ConsultationEdge!]!
-    pageInfo: PageInfo!
-    totalCount: Int!
-}
-
-type ConsultationEdge {
-    node: Consultation!
-    cursor: String!
-}
-
-type PageInfo {
-    hasNextPage: Boolean!
-    hasPreviousPage: Boolean!
-    startCursor: String
-    endCursor: String
-}
+# Filtros para consultas
+# Removido Connection/Edge/PageInfo para simplificar
 
 # Inputs
 input ConsultationFilter {
@@ -106,8 +90,6 @@ input ConsultationFilter {
     startDate: String
     endDate: String
     status: ConsultationStatus
-    first: Int = 10
-    after: String
 }
 
 input CreateConsultationInput {
