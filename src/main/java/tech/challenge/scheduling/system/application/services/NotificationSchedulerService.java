@@ -25,16 +25,19 @@ public class NotificationSchedulerService {
     private final ConsultationHistoryRepository repository;
     private final RabbitTemplate rabbitTemplate;
     private final String queueName;
+    private final String scheduleCron;
 
     public NotificationSchedulerService(ConsultationHistoryRepository repository,
                                         RabbitTemplate rabbitTemplate,
-                                        @Value("${notifications.queue:consultation.notifications}") String queueName) {
+                                        @Value("${notifications.queue:consultation.notifications}") String queueName,
+                                        @Value("${notifications.cron:0 0 8 * * *}") String scheduleCron) {
         this.repository = repository;
         this.rabbitTemplate = rabbitTemplate;
         this.queueName = queueName;
+        this.scheduleCron = scheduleCron;
     }
 
-    @Scheduled(cron = "0 0 8 * * *")
+    @Scheduled(cron = "${notifications.cron:0 0 8 * * *}")
     public void scheduleTomorrowNotifications() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         LocalDateTime start = LocalDateTime.of(tomorrow, LocalTime.MIN);
@@ -52,7 +55,7 @@ public class NotificationSchedulerService {
         }
     }
 
-    @Scheduled(cron = "0 0 8 * * *")
+    @Scheduled(cron = "${notifications.cron:0 0 8 * * *}")
     @Transactional
     public void processQueueForTomorrow() {
         while (true) {

@@ -21,7 +21,7 @@ class NotificationSchedulerServiceTest {
     void scheduleTomorrowNotifications_marksScheduled() {
         ConsultationHistoryRepository repo = Mockito.mock(ConsultationHistoryRepository.class);
         RabbitTemplate rabbitTemplate = Mockito.mock(RabbitTemplate.class);
-        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications");
+        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications", "0 0 8 * * *");
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         ConsultationHistory c = new ConsultationHistory();
@@ -41,7 +41,7 @@ class NotificationSchedulerServiceTest {
     void consumeNotification_updatesSent() {
         ConsultationHistoryRepository repo = Mockito.mock(ConsultationHistoryRepository.class);
         RabbitTemplate rabbitTemplate = Mockito.mock(RabbitTemplate.class);
-        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications");
+        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications", "0 0 8 * * *");
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         ConsultationHistory c = new ConsultationHistory();

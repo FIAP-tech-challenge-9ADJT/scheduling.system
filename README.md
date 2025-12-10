@@ -269,6 +269,9 @@ RABBITMQ_HOST=rabbitmq
 RABBITMQ_USER=admin
 RABBITMQ_PASSWORD=admin
 RABBITMQ_PORT=5672
+
+# Horário do Scheduler de Notificações (formato cron Spring)
+NOTIFICATIONS_CRON="0 0 8 * * *" # padrão 08:00 diariamente
 ```
 
 E opcionalmente habilite TLS em produção:
@@ -315,7 +318,7 @@ SPRING_RABBITMQ_SSL_ENABLED=true
    }
    ```
 
-3. O sistema publicará uma mensagem na fila. Às 08:00 do dia anterior à consulta:
+3. O sistema publicará uma mensagem na fila. No horário configurado em `NOTIFICATIONS_CRON` (por padrão 08:00) do dia anterior à consulta:
    - Marcará a consulta com `notificationStatus = SCHEDULED`.
    - Consumirá a fila e enviará a notificação (simulada), atualizando `notificationStatus = SENT`, `notificationSentAt` e incrementando `notificationAttempts`.
 
