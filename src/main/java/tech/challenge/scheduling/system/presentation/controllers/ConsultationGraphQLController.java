@@ -8,6 +8,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import tech.challenge.scheduling.system.application.services.*;
+import tech.challenge.scheduling.system.infrastructure.messaging.ConsultationNotificationPublisher;
+import tech.challenge.scheduling.system.infrastructure.messaging.ConsultationNotificationMessage;
 import tech.challenge.scheduling.system.domain.entities.ConsultationHistory;
 import tech.challenge.scheduling.system.infrastructure.persistence.entities.*;
 import tech.challenge.scheduling.system.infrastructure.security.MultiProfileUserDetails;
@@ -24,16 +26,19 @@ public class ConsultationGraphQLController {
     private final PatientApplicationService patientService;
     private final DoctorApplicationService doctorService;
     private final NurseApplicationService nurseService;
+    private final ConsultationNotificationPublisher notificationPublisher;
 
     public ConsultationGraphQLController(
             ConsultationHistoryService consultationService,
             PatientApplicationService patientService,
             DoctorApplicationService doctorService,
-            NurseApplicationService nurseService) {
+            NurseApplicationService nurseService,
+            ConsultationNotificationPublisher notificationPublisher) {
         this.consultationService = consultationService;
         this.patientService = patientService;
         this.doctorService = doctorService;
         this.nurseService = nurseService;
+        this.notificationPublisher = notificationPublisher;
     }
 
     // Queries principais para histórico médico (REQUISITO DA ESPECIFICAÇÃO)
@@ -116,7 +121,7 @@ public class ConsultationGraphQLController {
 
     // Mutations para agendamento (REQUISITO DA ESPECIFICAÇÃO)
     @MutationMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'NURSE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'NURSE', 'DOCTOR')")
     public ConsultationHistory createConsultation(@Argument CreateConsultationInputDTO input) {
         ConsultationHistory consultation = new ConsultationHistory();
         consultation.setPatientId(input.patientId());
@@ -126,7 +131,17 @@ public class ConsultationGraphQLController {
         consultation.setDescription(input.description());
         consultation.setNotes(input.notes());
         
-        return consultationService.save(consultation);
+        ConsultationHistory saved = consultationService.save(consultation);
+        PatientJpaEntity patient = patientService.getPatientById(saved.getPatientId());
+        ConsultationNotificationMessage message = new ConsultationNotificationMessage(
+                saved.getId(),
+                saved.getDateTime(),
+                saved.getPatientId(),
+                patient != null ? patient.getName() : null,
+                patient != null ? patient.getEmail() : null
+        );
+        notificationPublisher.publish(message);
+        return saved;
     }
 
     @MutationMapping

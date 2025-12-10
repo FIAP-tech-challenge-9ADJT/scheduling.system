@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tech.challenge.scheduling.system.domain.entities.ConsultationHistory;
+import tech.challenge.scheduling.system.domain.entities.NotificationStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,4 +40,9 @@ public interface ConsultationHistoryRepository extends JpaRepository<Consultatio
         @Param("endDate") LocalDateTime endDate,
         @Param("status") String status
     );
+
+    @Query("SELECT c FROM ConsultationHistory c WHERE c.dateTime BETWEEN :start AND :end AND (c.notificationStatus IS NULL OR c.notificationStatus <> :status)")
+    List<ConsultationHistory> findTomorrowPendingNotifications(@Param("start") LocalDateTime start,
+                                                               @Param("end") LocalDateTime end,
+                                                               @Param("status") NotificationStatus status);
 }

@@ -238,3 +238,120 @@ docker run --rm -it \
     -Dflyway.user=\$MYSQL_USER \
     -Dflyway.password=\$MYSQL_PASSWORD"
 ```
+
+## 📣 Notificações de Consultas (RabbitMQ)
+
+### Objetivo
+
+- Notificar pacientes um dia antes da consulta agendada. A notificação é preparada no ato da criação da consulta e processada diariamente às 08:00.
+
+### Arquitetura e Componentes
+
+- Fila RabbitMQ: `consultation.notifications` (configurável via `notifications.queue`).
+- Publicação de mensagens ao criar consultas:
+  - `ConsultationGraphQLController#createConsultation` cria o registro e publica a mensagem com dados da consulta e paciente.
+  - Publisher: `ConsultationNotificationPublisher`.
+- Processamento diário:
+  - `NotificationSchedulerService` possui duas rotinas às 08:00:
+    - Marca consultas de amanhã com `notificationStatus = SCHEDULED`.
+    - Processa a fila, verifica se a consulta é de amanhã, envia a notificação (simulada) e atualiza `notificationStatus`, `notificationSentAt` e `notificationAttempts`.
+- Modelo:
+  - `ConsultationHistory` inclui os campos de notificação: `notificationStatus`, `notificationSentAt`, `notificationAttempts`.
+- Configuração:
+  - `RabbitMQConfig` configura `Queue`, `RabbitTemplate` e conversor JSON com suporte a `LocalDateTime`.
+
+### Variáveis de Ambiente (RabbitMQ)
+
+Adicione as seguintes variáveis ao `.env` conforme seu ambiente:
+
+```env
+RABBITMQ_HOST=rabbitmq
+RABBITMQ_USER=admin
+RABBITMQ_PASSWORD=admin
+RABBITMQ_PORT=5672
+```
+
+E opcionalmente habilite TLS em produção:
+
+```env
+SPRING_RABBITMQ_SSL_ENABLED=true
+# SPRING_RABBITMQ_SSL_ALGORITHM=TLSv1.2
+# SPRING_RABBITMQ_SSL_KEY-STORE=... 
+# SPRING_RABBITMQ_SSL_KEY-STORE-PASSWORD=...
+# SPRING_RABBITMQ_SSL_TRUST-STORE=...
+# SPRING_RABBITMQ_SSL_TRUST-STORE-PASSWORD=...
+```
+
+### Migrações
+
+- `V4__Add_notification_columns.sql` adiciona as colunas:
+  - `notification_status VARCHAR(20)`, `notification_sent_at DATETIME`, `notification_attempts INT DEFAULT 0`.
+- As migrações executam automaticamente ao iniciar a aplicação com Flyway habilitado.
+
+### Como Usar
+
+1. Suba a stack com Docker:
+   
+   ```bash
+   docker-compose up -d --build
+   ```
+
+2. Crie uma consulta via GraphQL com `dateTime` para o dia de amanhã:
+
+   ```graphql
+   mutation {
+     createConsultation(input: {
+       patientId: 1
+       doctorId: 2
+       nurseId: 3
+       dateTime: "2025-12-10T14:00:00"
+       description: "Consulta"
+       notes: ""
+     }) {
+       id
+       dateTime
+       description
+     }
+   }
+   ```
+
+3. O sistema publicará uma mensagem na fila. Às 08:00 do dia anterior à consulta:
+   - Marcará a consulta com `notificationStatus = SCHEDULED`.
+   - Consumirá a fila e enviará a notificação (simulada), atualizando `notificationStatus = SENT`, `notificationSentAt` e incrementando `notificationAttempts`.
+
+4. Verifique os logs:
+
+   ```bash
+   docker-compose logs -f app
+   ```
+
+5. Acesse o painel do RabbitMQ (opcional):
+
+   - Broker: `http://localhost:5672`
+   - Management UI: `http://localhost:15672` (login: `RABBITMQ_USER` / senha: `RABBITMQ_PASSWORD`)
+
+### Idempotência, Retentativas e Logs
+
+- Idempotência: uma consulta com `notificationStatus = SENT` não é notificada novamente.
+- Retentativas: incrementa `notificationAttempts` e reencaminha mensagens em falhas, marcando `FAILED` quando aplicável.
+- Logs registram todas as operações de agendamento, publicação, consumo e erros.
+
+### Testes
+
+- Unitários:
+  - `ConsultationNotificationPublisherTest` valida publicação na fila.
+  - `NotificationSchedulerServiceTest` valida marcação `SCHEDULED` e envio `SENT`.
+- Execução:
+  
+  ```bash
+  ./mvnw test
+  ```
+
+### Troubleshooting
+
+- Erros de conexão RabbitMQ:
+  - Verifique `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`.
+  - Confirme que o serviço `rabbitmq` está saudável (`docker-compose ps`).
+- Mensagens não processadas:
+  - Certifique-se de que a consulta foi criada com `dateTime` para amanhã.
+  - Veja os logs às 08:00 para confirmar processamento.
