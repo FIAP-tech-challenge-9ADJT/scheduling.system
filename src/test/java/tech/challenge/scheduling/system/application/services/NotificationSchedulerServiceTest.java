@@ -21,7 +21,16 @@ class NotificationSchedulerServiceTest {
     void scheduleTomorrowNotifications_marksScheduled() {
         ConsultationHistoryRepository repo = Mockito.mock(ConsultationHistoryRepository.class);
         RabbitTemplate rabbitTemplate = Mockito.mock(RabbitTemplate.class);
-        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications", "0 0 8 * * *");
+        NotificationSchedulerService service = new NotificationSchedulerService(
+                repo, rabbitTemplate,
+                "consultation.notifications",
+                "consultation.notifications.exchange",
+                "notification.consultation",
+                "consultation.notifications.delay.exchange",
+                "notification.consultation.delay",
+                "consultation.notifications.delay",
+                "0 0 8 * * *"
+        );
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         ConsultationHistory c = new ConsultationHistory();
@@ -41,7 +50,16 @@ class NotificationSchedulerServiceTest {
     void consumeNotification_updatesSent() {
         ConsultationHistoryRepository repo = Mockito.mock(ConsultationHistoryRepository.class);
         RabbitTemplate rabbitTemplate = Mockito.mock(RabbitTemplate.class);
-        NotificationSchedulerService service = new NotificationSchedulerService(repo, rabbitTemplate, "consultation.notifications", "0 0 8 * * *");
+        NotificationSchedulerService service = new NotificationSchedulerService(
+                repo, rabbitTemplate,
+                "consultation.notifications",
+                "consultation.notifications.exchange",
+                "notification.consultation",
+                "consultation.notifications.delay.exchange",
+                "notification.consultation.delay",
+                "consultation.notifications.delay",
+                "0 0 8 * * *"
+        );
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         ConsultationHistory c = new ConsultationHistory();
@@ -50,8 +68,7 @@ class NotificationSchedulerServiceTest {
         Mockito.when(repo.findById(10L)).thenReturn(java.util.Optional.of(c));
 
         ConsultationNotificationMessage msg = new ConsultationNotificationMessage(10L, c.getDateTime(), 1L, "John", "john@example.com");
-        Mockito.when(rabbitTemplate.receiveAndConvert("consultation.notifications")).thenReturn(msg).thenReturn(null);
-        service.processQueueForTomorrow();
+        service.consumeNotification(msg);
 
         Mockito.verify(repo, Mockito.times(1)).save(Mockito.argThat(saved -> saved.getNotificationStatus() == NotificationStatus.SENT));
     }

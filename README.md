@@ -242,119 +242,55 @@ docker run --rm -it \
 ## 📣 Notificações de Consultas (RabbitMQ)
 
 ### Objetivo
+- Notificar pacientes um dia antes da consulta. A mensagem é publicada na criação da consulta e processada automaticamente pela aplicação.
 
-- Notificar pacientes um dia antes da consulta agendada. A notificação é preparada no ato da criação da consulta e processada diariamente às 08:00.
+### Componentes
+- Exchange principal: `consultation.notifications.exchange` (direct).
+- Fila principal: `consultation.notifications` (consumida pela aplicação).
+- Exchange de delay: `consultation.notifications.delay.exchange`.
+- Fila de delay: `consultation.notifications.delay` com TTL e DLX (retorna para a exchange principal).
+- Declaração automática: `RabbitAdmin` cria exchanges, filas e bindings no startup.
 
-### Arquitetura e Componentes
+### Como funciona
+- Publicação:
+  - Ao criar consulta, publicamos `ConsultationNotificationMessage` na exchange principal.
+  - Para testes, o endpoint `/notifications/test/{id}?delayMs=60000` envia para a fila de delay e define `processAfter`.
+- Consumo:
+  - Fila principal: `@RabbitListener` processa as mensagens e atualiza `notificationStatus`, `notificationSentAt` e `notificationAttempts`.
+  - Fila de delay: a aplicação faz polling periódico e reprocessa quando chegar o horário; o broker também devolve mensagens para a exchange principal quando o TTL expira.
+- Agendamento diário:
+  - Às 08:00, marca consultas de amanhã com `notificationStatus = SCHEDULED`.
 
-- Fila RabbitMQ: `consultation.notifications` (configurável via `notifications.queue`).
-- Publicação de mensagens ao criar consultas:
-  - `ConsultationGraphQLController#createConsultation` cria o registro e publica a mensagem com dados da consulta e paciente.
-  - Publisher: `ConsultationNotificationPublisher`.
-- Processamento diário:
-  - `NotificationSchedulerService` possui duas rotinas às 08:00:
-    - Marca consultas de amanhã com `notificationStatus = SCHEDULED`.
-    - Processa a fila, verifica se a consulta é de amanhã, envia a notificação (simulada) e atualiza `notificationStatus`, `notificationSentAt` e `notificationAttempts`.
-- Modelo:
-  - `ConsultationHistory` inclui os campos de notificação: `notificationStatus`, `notificationSentAt`, `notificationAttempts`.
-- Configuração:
-  - `RabbitMQConfig` configura `Queue`, `RabbitTemplate` e conversor JSON com suporte a `LocalDateTime`.
+### Endpoints úteis
+- `POST /notifications/test/{id}?delayMs=300000`
+  - Se `SENT`, apenas loga e retorna 200.
+  - Caso contrário, enfileira com delay e retorna 202.
 
-### Variáveis de Ambiente (RabbitMQ)
+### Configuração
+- Propriedades principais (podem ir no `.env` via `SPRING_...`):
+  - `notifications.queue`, `notifications.exchange`, `notifications.routing-key`
+  - `notifications.delay.queue`, `notifications.delay.exchange`, `notifications.delay.routing-key`, `notifications.delay.ttl-ms`, `notifications.delay.poll-ms`
+  - `notifications.cron` (padrão 08:00)
 
-Adicione as seguintes variáveis ao `.env` conforme seu ambiente:
-
-```env
-RABBITMQ_HOST=rabbitmq
-RABBITMQ_USER=admin
-RABBITMQ_PASSWORD=admin
-RABBITMQ_PORT=5672
-
-# Horário do Scheduler de Notificações (formato cron Spring)
-NOTIFICATIONS_CRON="0 0 8 * * *" # padrão 08:00 diariamente
-```
-
-E opcionalmente habilite TLS em produção:
-
-```env
-SPRING_RABBITMQ_SSL_ENABLED=true
-# SPRING_RABBITMQ_SSL_ALGORITHM=TLSv1.2
-# SPRING_RABBITMQ_SSL_KEY-STORE=... 
-# SPRING_RABBITMQ_SSL_KEY-STORE-PASSWORD=...
-# SPRING_RABBITMQ_SSL_TRUST-STORE=...
-# SPRING_RABBITMQ_SSL_TRUST-STORE-PASSWORD=...
-```
-
-### Migrações
-
-- `V4__Add_notification_columns.sql` adiciona as colunas:
-  - `notification_status VARCHAR(20)`, `notification_sent_at DATETIME`, `notification_attempts INT DEFAULT 0`.
-- As migrações executam automaticamente ao iniciar a aplicação com Flyway habilitado.
-
-### Como Usar
-
-1. Suba a stack com Docker:
-   
-   ```bash
-   docker-compose up -d --build
-   ```
-
-2. Crie uma consulta via GraphQL com `dateTime` para o dia de amanhã:
-
-   ```graphql
-   mutation {
-     createConsultation(input: {
-       patientId: 1
-       doctorId: 2
-       nurseId: 3
-       dateTime: "2025-12-10T14:00:00"
-       description: "Consulta"
-       notes: ""
-     }) {
-       id
-       dateTime
-       description
-     }
-   }
-   ```
-
-3. O sistema publicará uma mensagem na fila. No horário configurado em `NOTIFICATIONS_CRON` (por padrão 08:00) do dia anterior à consulta:
-   - Marcará a consulta com `notificationStatus = SCHEDULED`.
-   - Consumirá a fila e enviará a notificação (simulada), atualizando `notificationStatus = SENT`, `notificationSentAt` e incrementando `notificationAttempts`.
-
-4. Verifique os logs:
-
-   ```bash
-   docker-compose logs -f app
-   ```
-
-5. Acesse o painel do RabbitMQ (opcional):
-
-   - Broker: `http://localhost:5672`
-   - Management UI: `http://localhost:15672` (login: `RABBITMQ_USER` / senha: `RABBITMQ_PASSWORD`)
-
-### Idempotência, Retentativas e Logs
-
-- Idempotência: uma consulta com `notificationStatus = SENT` não é notificada novamente.
-- Retentativas: incrementa `notificationAttempts` e reencaminha mensagens em falhas, marcando `FAILED` quando aplicável.
-- Logs registram todas as operações de agendamento, publicação, consumo e erros.
+### Verificação
+- Suba a stack:
+  ```bash
+  docker-compose up -d --build
+  ```
+- Acesse `http://localhost:15672` e confirme exchanges/filas/bindings.
+- Envie uma consulta de teste pelo endpoint e veja os logs:
+  ```bash
+  curl -X POST 'http://localhost:8080/notifications/test/10?delayMs=60000'
+  docker-compose logs -f app
+  ```
 
 ### Testes
-
-- Unitários:
-  - `ConsultationNotificationPublisherTest` valida publicação na fila.
-  - `NotificationSchedulerServiceTest` valida marcação `SCHEDULED` e envio `SENT`.
-- Execução:
-  
+- Unitários atualizados:
+  - Publisher (envio direto e com delay).
+  - Scheduler/Listener (marca `SCHEDULED`, envia `SENT` e respeita `processAfter`).
   ```bash
   ./mvnw test
   ```
 
-### Troubleshooting
-
-- Erros de conexão RabbitMQ:
-  - Verifique `RABBITMQ_HOST`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`.
-  - Confirme que o serviço `rabbitmq` está saudável (`docker-compose ps`).
-- Mensagens não processadas:
-  - Certifique-se de que a consulta foi criada com `dateTime` para amanhã.
-  - Veja os logs às 08:00 para confirmar processamento.
+### Documentação Detalhada
+- Guia completo das notificações: [docs/notifications.md](docs/notifications.md)

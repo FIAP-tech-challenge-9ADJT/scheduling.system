@@ -8,6 +8,7 @@ public class ConsultationNotificationMessage {
     private Long patientId;
     private String patientName;
     private String patientEmail;
+    private LocalDateTime processAfter;
 
     public ConsultationNotificationMessage() {}
 
@@ -30,5 +31,6 @@ public class ConsultationNotificationMessage {
     public void setPatientName(String patientName) { this.patientName = patientName; }
     public String getPatientEmail() { return patientEmail; }
     public void setPatientEmail(String patientEmail) { this.patientEmail = patientEmail; }
+    public LocalDateTime getProcessAfter() { return processAfter; }
+    public void setProcessAfter(LocalDateTime processAfter) { this.processAfter = processAfter; }
 }
-

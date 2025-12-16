@@ -2,7 +2,9 @@ package tech.challenge.scheduling.system.application.services;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,15 +27,30 @@ public class NotificationSchedulerService {
     private final ConsultationHistoryRepository repository;
     private final RabbitTemplate rabbitTemplate;
     private final String queueName;
+    private final String exchange;
+    private final String routingKey;
+    private final String delayExchange;
+    private final String delayRoutingKey;
+    private final String delayQueue;
     private final String scheduleCron;
 
     public NotificationSchedulerService(ConsultationHistoryRepository repository,
                                         RabbitTemplate rabbitTemplate,
                                         @Value("${notifications.queue:consultation.notifications}") String queueName,
+                                        @Value("${notifications.exchange:consultation.notifications.exchange}") String exchange,
+                                        @Value("${notifications.routing-key:notification.consultation}") String routingKey,
+                                        @Value("${notifications.delay.exchange:consultation.notifications.delay.exchange}") String delayExchange,
+                                        @Value("${notifications.delay.routing-key:notification.consultation.delay}") String delayRoutingKey,
+                                        @Value("${notifications.delay.queue:consultation.notifications.delay}") String delayQueue,
                                         @Value("${notifications.cron:0 0 8 * * *}") String scheduleCron) {
         this.repository = repository;
         this.rabbitTemplate = rabbitTemplate;
         this.queueName = queueName;
+        this.exchange = exchange;
+        this.routingKey = routingKey;
+        this.delayExchange = delayExchange;
+        this.delayRoutingKey = delayRoutingKey;
+        this.delayQueue = delayQueue;
         this.scheduleCron = scheduleCron;
     }
 
@@ -55,56 +72,67 @@ public class NotificationSchedulerService {
         }
     }
 
-    @Scheduled(cron = "${notifications.cron:0 0 8 * * *}")
+    @RabbitListener(queues = "${notifications.queue:consultation.notifications}")
     @Transactional
-    public void processQueueForTomorrow() {
-        while (true) {
-            Object obj = rabbitTemplate.receiveAndConvert(queueName);
-            if (obj == null) break;
-            ConsultationNotificationMessage message = (ConsultationNotificationMessage) obj;
+    public void consumeNotification(ConsultationNotificationMessage message) {
+        log.info("Consumed message for consultation {} at {} to patient {}",
+                message.getConsultationId(),
+                message.getDateTime(),
+                message.getPatientEmail());
 
-            log.info("Consumed message from queue '{}' for consultation {} at {} to patient {}",
-                    queueName,
-                    message.getConsultationId(),
-                    message.getDateTime(),
-                    message.getPatientEmail());
-
-            try {
-                ConsultationHistory consultation = repository.findById(message.getConsultationId()).orElse(null);
-                if (consultation == null) continue;
-
-                if (consultation.getNotificationStatus() == NotificationStatus.SENT) {
-                    continue;
-                }
-
-                boolean isTomorrow = message.getDateTime().toLocalDate().equals(LocalDate.now().plusDays(1));
-                if (!isTomorrow) {
-                    rabbitTemplate.convertAndSend(queueName, message);
-                    continue;
-                }
-
-                int maxAttempts = 3;
-                boolean sent = false;
-                for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-                    consultation.setNotificationAttempts(consultation.getNotificationAttempts() + 1);
-                    consultation.setNotificationStatus(NotificationStatus.SENT);
-                    consultation.setNotificationSentAt(LocalDateTime.now());
-                    repository.save(consultation);
-                    log.info("Notification sent to {} for consultation {} (attempt {})", message.getPatientEmail(), message.getConsultationId(), attempt);
-                    sent = true;
-                    break;
-                }
-
-                if (!sent) {
-                    consultation.setNotificationStatus(NotificationStatus.FAILED);
-                    repository.save(consultation);
-                    rabbitTemplate.convertAndSend(queueName, message);
-                    log.error("Notification failed for consultation {} - requeued", message.getConsultationId());
-                }
-            } catch (Exception e) {
-                log.error("Error processing message for consultation {}", message.getConsultationId(), e);
-                rabbitTemplate.convertAndSend(queueName, message);
+        try {
+            if (message.getProcessAfter() != null && java.time.LocalDateTime.now().isBefore(message.getProcessAfter())) {
+                long remainingMs = java.time.Duration.between(java.time.LocalDateTime.now(), message.getProcessAfter()).toMillis();
+                MessagePostProcessor mpp = msg -> {
+                    msg.getMessageProperties().setExpiration(String.valueOf(Math.max(remainingMs, 1000)));
+                    return msg;
+                };
+                rabbitTemplate.convertAndSend(delayExchange, delayRoutingKey, message, mpp);
+                return;
             }
+            ConsultationHistory consultation = repository.findById(message.getConsultationId()).orElse(null);
+            if (consultation == null) {
+                rabbitTemplate.convertAndSend(delayExchange, delayRoutingKey, message);
+                return;
+            }
+
+            if (consultation.getNotificationStatus() == NotificationStatus.SENT) {
+                return;
+            }
+
+            boolean isTomorrow = consultation.getDateTime().toLocalDate().equals(LocalDate.now().plusDays(1));
+            if (!isTomorrow) {
+                rabbitTemplate.convertAndSend(delayExchange, delayRoutingKey, message);
+                return;
+            }
+
+            int maxAttempts = 3;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                consultation.setNotificationAttempts(consultation.getNotificationAttempts() + 1);
+                consultation.setNotificationStatus(NotificationStatus.SENT);
+                consultation.setNotificationSentAt(LocalDateTime.now());
+                repository.save(consultation);
+                log.info("Notification sent to {} for consultation {} (attempt {})", message.getPatientEmail(), message.getConsultationId(), attempt);
+                return;
+            }
+
+            consultation.setNotificationStatus(NotificationStatus.FAILED);
+            repository.save(consultation);
+            rabbitTemplate.convertAndSend(delayExchange, delayRoutingKey, message);
+            log.error("Notification failed for consultation {} - requeued to delay", message.getConsultationId());
+        } catch (Exception e) {
+            log.error("Error processing message for consultation {}", message.getConsultationId(), e);
+            rabbitTemplate.convertAndSend(delayExchange, delayRoutingKey, message);
+        }
+    }
+
+    @Scheduled(fixedDelayString = "${notifications.delay.poll-ms:30000}")
+    public void pollDelayQueue() {
+        Object obj;
+        while ((obj = rabbitTemplate.receiveAndConvert(delayQueue)) != null) {
+            ConsultationNotificationMessage message = (ConsultationNotificationMessage) obj;
+            log.info("Polled from delay queue: consultation {} scheduled after {}", message.getConsultationId(), message.getProcessAfter());
+            consumeNotification(message);
         }
     }
 }
