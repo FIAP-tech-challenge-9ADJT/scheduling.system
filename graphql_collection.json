@@ -1,0 +1,1073 @@
+{
+    "info": {
+      "name": "Sistema GraphQL Agendamento - Testes Completos",
+      "description": "Bateria completa de testes para o sistema de agendamento hospitalar com GraphQL",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+      "type": "bearer",
+      "bearer": [
+        {
+          "key": "token",
+          "value": "{{auth_token}}",
+          "type": "string"
+        }
+      ]
+    },
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8080"
+      },
+      {
+        "key": "admin_token",
+        "value": ""
+      },
+      {
+        "key": "doctor_token",
+        "value": ""
+      },
+      {
+        "key": "nurse_token",
+        "value": ""
+      },
+      {
+        "key": "patient_token",
+        "value": ""
+      }
+    ],
+    "item": [
+      {
+        "name": "1. SETUP - Criação de Usuários",
+        "item": [
+          {
+            "name": "1.1 Criar Admin",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Dr. Admin Silva\",\n  \"email\": \"admin@hospital.com\",\n  \"login\": \"admin\",\n  \"password\": \"admin123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/admins",
+                "host": ["{{base_url}}"],
+                "path": ["admins"]
+              }
+            }
+          },
+          {
+            "name": "1.2 Login Admin",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "    const response = pm.response.json();",
+                    "    pm.collectionVariables.set('admin_token', response.token);",
+                    "    pm.collectionVariables.set('auth_token', response.token);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"login\": \"admin\",\n  \"password\": \"admin123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            }
+          },
+          {
+            "name": "1.3 Criar Médico",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Dr. João Cardiologista\",\n  \"email\": \"joao@hospital.com\",\n  \"login\": \"drjoao\",\n  \"password\": \"doctor123\",\n  \"crm\": \"123456\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/doctors",
+                "host": ["{{base_url}}"],
+                "path": ["doctors"]
+              }
+            }
+          },
+          {
+            "name": "1.4 Criar Enfermeira",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Enfermeira Maria Santos\",\n  \"email\": \"maria@hospital.com\",\n  \"login\": \"enfmaria\",\n  \"password\": \"nurse123\",\n  \"coren\": \"1234567\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/nurses",
+                "host": ["{{base_url}}"],
+                "path": ["nurses"]
+              }
+            }
+          },
+          {
+            "name": "1.5 Criar Paciente 1",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"José Silva Paciente\",\n  \"email\": \"jose@email.com\",\n  \"login\": \"jose\",\n  \"password\": \"patient123\",\n  \"cpf\": \"123.456.789-00\",\n  \"address\": \"Rua das Flores, 123\",\n  \"addressNumber\": \"123\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"postalCode\": \"01234-567\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/patients",
+                "host": ["{{base_url}}"],
+                "path": ["patients"]
+              }
+            }
+          },
+          {
+            "name": "1.6 Criar Paciente 2",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Ana Costa Paciente\",\n  \"email\": \"ana@email.com\",\n  \"login\": \"ana\",\n  \"password\": \"patient123\",\n  \"cpf\": \"987.654.321-00\",\n  \"address\": \"Av. Paulista, 456\",\n  \"addressNumber\": \"456\",\n  \"city\": \"São Paulo\",\n  \"state\": \"SP\",\n  \"postalCode\": \"01310-100\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/patients",
+                "host": ["{{base_url}}"],
+                "path": ["patients"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "2. AUTENTICAÇÃO - Tokens",
+        "item": [
+          {
+            "name": "2.1 Login Médico",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "    const response = pm.response.json();",
+                    "    pm.collectionVariables.set('doctor_token', response.token);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"login\": \"drjoao\",\n  \"password\": \"doctor123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            }
+          },
+          {
+            "name": "2.2 Login Enfermeira",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "    const response = pm.response.json();",
+                    "    pm.collectionVariables.set('nurse_token', response.token);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"login\": \"enfmaria\",\n  \"password\": \"nurse123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            }
+          },
+          {
+            "name": "2.3 Login Paciente",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "    const response = pm.response.json();",
+                    "    pm.collectionVariables.set('patient_token', response.token);",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"login\": \"jose\",\n  \"password\": \"patient123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "3. GRAPHQL - Criar Consultas",
+        "item": [
+          {
+            "name": "3.1 Criar Consulta 1 (Enfermeira)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"1\\\", doctorId: \\\"1\\\", nurseId: \\\"1\\\", dateTime: \\\"2025-01-15T09:00:00\\\", description: \\\"Consulta cardiológica de rotina\\\", notes: \\\"Paciente com histórico familiar\\\" }) { id dateTime description status patient { name } doctor { name } nurse { name } } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "3.2 Criar Consulta 2 (Enfermeira)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"2\\\", doctorId: \\\"1\\\", dateTime: \\\"2025-01-15T14:00:00\\\", description: \\\"Consulta de retorno cardiológica\\\" }) { id dateTime description status patient { name } doctor { name } } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "3.3 Criar Consulta 3 (Futura)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"1\\\", doctorId: \\\"1\\\", dateTime: \\\"2025-02-20T10:30:00\\\", description: \\\"Consulta de acompanhamento\\\" }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "3.4 Criar Consulta 4 (Passada)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"2\\\", doctorId: \\\"1\\\", dateTime: \\\"2024-12-01T11:00:00\\\", description: \\\"Consulta inicial cardiológica\\\" }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "4. GRAPHQL - Atualizar Status",
+        "item": [
+          {
+            "name": "4.1 Confirmar Consulta (Médico)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { updateConsultation(id: \\\"1\\\", input: { status: CONFIRMED }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "4.2 Marcar como Concluída (Médico)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { updateConsultation(id: \\\"4\\\", input: { status: COMPLETED, notes: \\\"Consulta realizada com sucesso\\\" }) { id status notes } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "4.3 Marcar como Em Andamento",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { updateConsultation(id: \\\"2\\\", input: { status: IN_PROGRESS }) { id status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "5. GRAPHQL - Queries",
+        "item": [
+          {
+            "name": "5.1 Listar Todas (Admin)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations { id dateTime description status patient { name } doctor { name } } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.2 Filtrar por Paciente",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations(filter: { patientId: \\\"1\\\" }) { id dateTime description status patient { name } } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.3 Filtrar por Status",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations(filter: { status: CONFIRMED }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.4 Filtrar por Período",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations(filter: { startDate: \\\"2025-01-01T00:00:00\\\", endDate: \\\"2025-01-31T23:59:59\\\" }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.5 Filtros Combinados",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations(filter: { patientId: \\\"1\\\", status: SCHEDULED }) { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.6 Consulta Individual",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultation(id: \\\"1\\\") { id dateTime description status notes patient { name email } doctor { name crm } } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "5.7 Consultas Futuras",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { futureConsultations(patientId: \\\"1\\\") { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "6. TESTES DE ERRO - Mensagens Personalizadas ✨",
+        "item": [
+          {
+            "name": "6.1 ✅ Formato Data Inválido (Mensagem Bonitinha)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"1\\\", doctorId: \\\"1\\\", dateTime: \\\"data-inválida\\\", description: \\\"Teste erro\\\" }) { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "6.2 ✅ ID Inexistente (Mensagem Bonitinha)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultation(id: \\\"99999\\\") { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "6.3 ✅ Atualizar Inexistente (Mensagem Bonitinha)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { updateConsultation(id: \\\"99999\\\", input: { status: CONFIRMED }) { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "6.4 ❌ Campo Obrigatório Ausente (Erro Padrão)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{nurse_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { doctorId: \\\"1\\\", dateTime: \\\"2025-01-20T15:00:00\\\", description: \\\"Teste\\\" }) { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "6.5 ❌ Enum Inválido (Erro Padrão)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations(filter: { status: INVALID_STATUS }) { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "7. TESTES DE AUTORIZAÇÃO",
+        "item": [
+          {
+            "name": "7.1 Paciente - Suas Consultas",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{patient_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations { id dateTime description status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "7.2 Sem Token (Erro 401/403)",
+            "request": {
+              "auth": {
+                "type": "noauth"
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"query { consultations { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "7.3 Paciente Tentando Criar (Deve Falhar)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{patient_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { createConsultation(input: { patientId: \\\"1\\\", doctorId: \\\"1\\\", dateTime: \\\"2025-01-20T15:00:00\\\", description: \\\"Teste\\\" }) { id } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "8. OPERAÇÕES AVANÇADAS",
+        "item": [
+          {
+            "name": "8.1 Cancelar Consulta",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{admin_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { cancelConsultation(id: \\\"3\\\", reason: \\\"Paciente solicitou cancelamento\\\") }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          },
+          {
+            "name": "8.2 Reagendar Consulta",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{doctor_token}}"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"query\": \"mutation { rescheduleConsultation(id: \\\"2\\\", newDateTime: \\\"2025-01-16T15:00:00\\\") { id dateTime status } }\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/graphql",
+                "host": ["{{base_url}}"],
+                "path": ["graphql"]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }

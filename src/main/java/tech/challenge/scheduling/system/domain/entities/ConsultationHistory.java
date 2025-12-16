@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
+import tech.challenge.scheduling.system.domain.entities.NotificationStatus;
 
 @Entity
 @Table(name = "consultation_history")
@@ -34,5 +35,18 @@ public class ConsultationHistory {
 
 	@Column(columnDefinition = "TEXT")
 	private String notes;
-}
 
+	@Column(nullable = false)
+	@Enumerated(EnumType.STRING)
+	private ConsultationStatus status = ConsultationStatus.SCHEDULED;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "notification_status")
+	private NotificationStatus notificationStatus;
+
+	@Column(name = "notification_sent_at")
+	private LocalDateTime notificationSentAt;
+
+	@Column(name = "notification_attempts", nullable = false)
+	private int notificationAttempts = 0;
+}

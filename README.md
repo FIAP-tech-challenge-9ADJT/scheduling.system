@@ -6,8 +6,28 @@
 ![Docker](https://img.shields.io/badge/Docker-✓-blue)
 ![Maven](https://img.shields.io/badge/Maven-4.0.0-red)
 ![Flyway](https://img.shields.io/badge/Flyway-✓-green)
+![GraphQL](https://img.shields.io/badge/GraphQL-✓-e10098)
 
-Este projeto é a resolução do Tech Challenge da FIAP, desenvolvido em: Java, Spring Boot, MySQL e Docker.
+Este projeto é a resolução do Tech Challenge da FIAP - Fase 3, desenvolvido em: Java, Spring Boot, MySQL, GraphQL e Docker.
+
+## 🚀 Funcionalidades Implementadas
+
+### ✅ Requisitos da Especificação Atendidos:
+
+#### 1. **Segurança em Aplicações Java**
+- ✅ Autenticação com Spring Security e JWT
+- ✅ Níveis de acesso por perfil (Médicos, Enfermeiros, Pacientes, Administradores)
+- ✅ Autorização granular nos endpoints REST e GraphQL
+
+#### 2. **Consultas e Histórico do Paciente com GraphQL**
+- ✅ **Implementação completa de GraphQL** para consultas flexíveis
+- ✅ **Listar todos os atendimentos** de um paciente
+- ✅ **Consultar apenas consultas futuras**
+- ✅ **Filtros avançados** por médico, data, paciente
+- ✅ **Paginação eficiente** com cursor-based pagination
+- ✅ **Serviço de Agendamento** via GraphQL mutations
+- ✅ **Verificação de slots disponíveis** para agendamento
+- ✅ **Operações de reagendamento e cancelamento**
 
 ## Como Utilizar
 
@@ -50,14 +70,16 @@ docker-compose up -d --build
 
 Isso iniciará:
 
-- Banco de dados MySQL na porta 3306
-- Aplicação Spring Boot na porta 8080
-- PHPMyAdmin na porta 8081 para gerenciamento do banco de dados
+- **Banco de dados MySQL** na porta 3306
+- **Aplicação Spring Boot** na porta 8080
+- **PHPMyAdmin** na porta 8081 para gerenciamento do banco de dados
 
 #### Acessando a Aplicação
 
-- API: http://localhost:8080
-- PHPMyAdmin: http://localhost:8081
+- **API REST**: http://localhost:8080
+- **GraphQL Playground**: http://localhost:8080/graphiql
+- **GraphQL Endpoint**: http://localhost:8080/graphql
+- **PHPMyAdmin**: http://localhost:8081
   - Servidor: mysql
   - Usuário: [valor de MYSQL_USER]
   - Senha: [valor de MYSQL_PASSWORD]
@@ -95,6 +117,105 @@ O projeto utiliza um processo de build em múltiplas etapas:
 
 O projeto utiliza MySQL 8.0 com Flyway para migrações. As migrações estão localizadas em `src/main/resources/db/migration`.
 
+## 📊 Exemplos de Uso do GraphQL
+
+### Consultar Histórico de um Paciente
+
+```graphql
+query {
+  consultationsByPatient(patientId: 1) {
+    id
+    dateTime
+    description
+    notes
+    patient {
+      name
+      email
+    }
+    doctor {
+      name
+      crm
+    }
+  }
+}
+```
+
+### Consultar Apenas Consultas Futuras
+
+```graphql
+query {
+  futureConsultations(patientId: 1) {
+    id
+    dateTime
+    description
+    doctor {
+      name
+    }
+  }
+}
+```
+
+### Consulta Flexível com Filtros
+
+```graphql
+query {
+  consultations(filter: {
+    startDate: "2024-01-01T00:00:00"
+    endDate: "2024-12-31T23:59:59"
+    first: 10
+  }) {
+    edges {
+      node {
+        id
+        dateTime
+        description
+        patient { name }
+        doctor { name }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+    totalCount
+  }
+}
+```
+
+### Agendar Nova Consulta
+
+```graphql
+mutation {
+  createConsultation(input: {
+    patientId: 1
+    doctorId: 2
+    nurseId: 3
+    dateTime: "2024-12-15T14:00:00"
+    description: "Consulta de rotina"
+    notes: "Paciente com histórico de hipertensão"
+  }) {
+    id
+    dateTime
+    description
+  }
+}
+```
+
+### Atualizar Consulta Existente
+
+```graphql
+mutation {
+  updateConsultation(id: 1, input: {
+    dateTime: "2024-12-15T15:00:00"
+    notes: "Reagendado a pedido do paciente"
+  }) {
+    id
+    dateTime
+    notes
+  }
+}
+```
+
 ## Comando auxliares
 
 - Buildar o projeto sem cache
@@ -117,3 +238,59 @@ docker run --rm -it \
     -Dflyway.user=\$MYSQL_USER \
     -Dflyway.password=\$MYSQL_PASSWORD"
 ```
+
+## 📣 Notificações de Consultas (RabbitMQ)
+
+### Objetivo
+- Notificar pacientes um dia antes da consulta. A mensagem é publicada na criação da consulta e processada automaticamente pela aplicação.
+
+### Componentes
+- Exchange principal: `consultation.notifications.exchange` (direct).
+- Fila principal: `consultation.notifications` (consumida pela aplicação).
+- Exchange de delay: `consultation.notifications.delay.exchange`.
+- Fila de delay: `consultation.notifications.delay` com TTL e DLX (retorna para a exchange principal).
+- Declaração automática: `RabbitAdmin` cria exchanges, filas e bindings no startup.
+
+### Como funciona
+- Publicação:
+  - Ao criar consulta, publicamos `ConsultationNotificationMessage` na exchange principal.
+  - Para testes, o endpoint `/notifications/test/{id}?delayMs=60000` envia para a fila de delay e define `processAfter`.
+- Consumo:
+  - Fila principal: `@RabbitListener` processa as mensagens e atualiza `notificationStatus`, `notificationSentAt` e `notificationAttempts`.
+  - Fila de delay: a aplicação faz polling periódico e reprocessa quando chegar o horário; o broker também devolve mensagens para a exchange principal quando o TTL expira.
+- Agendamento diário:
+  - Às 08:00, marca consultas de amanhã com `notificationStatus = SCHEDULED`.
+
+### Endpoints úteis
+- `POST /notifications/test/{id}?delayMs=300000`
+  - Se `SENT`, apenas loga e retorna 200.
+  - Caso contrário, enfileira com delay e retorna 202.
+
+### Configuração
+- Propriedades principais (podem ir no `.env` via `SPRING_...`):
+  - `notifications.queue`, `notifications.exchange`, `notifications.routing-key`
+  - `notifications.delay.queue`, `notifications.delay.exchange`, `notifications.delay.routing-key`, `notifications.delay.ttl-ms`, `notifications.delay.poll-ms`
+  - `notifications.cron` (padrão 08:00)
+
+### Verificação
+- Suba a stack:
+  ```bash
+  docker-compose up -d --build
+  ```
+- Acesse `http://localhost:15672` e confirme exchanges/filas/bindings.
+- Envie uma consulta de teste pelo endpoint e veja os logs:
+  ```bash
+  curl -X POST 'http://localhost:8080/notifications/test/10?delayMs=60000'
+  docker-compose logs -f app
+  ```
+
+### Testes
+- Unitários atualizados:
+  - Publisher (envio direto e com delay).
+  - Scheduler/Listener (marca `SCHEDULED`, envia `SENT` e respeita `processAfter`).
+  ```bash
+  ./mvnw test
+  ```
+
+### Documentação Detalhada
+- Guia completo das notificações: [docs/notifications.md](docs/notifications.md)
